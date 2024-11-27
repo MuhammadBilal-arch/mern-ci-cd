@@ -1,0 +1,68 @@
+name: Node.js CI/CD with Forever
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20.x]
+        # Using one Node.js version for deployment.
+
+    steps:
+    # Step 1: Checkout the code
+    - uses: actions/checkout@v4
+
+    # Step 2: Set up Node.js
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    # Step 3: Install dependencies
+    - name: Install Dependencies
+      run: npm ci
+
+    # Step 4: Build the application (if applicable)
+    - name: Build Application
+      run: npm run build --if-present
+
+    # Step 5: Run tests
+    - name: Run Tests
+      run: npm test
+
+    # Step 6: Deploy to AWS EC2
+    - name: Deploy to AWS EC2 with Forever
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        EC2_HOST: ${{ secrets.EC2_HOST }}
+        EC2_USER: ${{ secrets.EC2_USER }}
+      run: |
+        # Save the private key for SSH
+        echo "$SSH_PRIVATE_KEY" > private_key.pem
+        chmod 600 private_key.pem
+
+        # SSH into the EC2 instance and deploy
+        ssh -o StrictHostKeyChecking=no -i private_key.pem $EC2_USER@$EC2_HOST << 'EOF'
+          cd /path/to/your/project
+          
+          # Pull the latest code
+          git pull origin main
+
+          # Install production dependencies
+          npm ci --production
+
+          # Stop any existing process
+          npx forever stopall || true
+
+          # Start the application with Forever
+          npx forever start server.js
+        EOF
