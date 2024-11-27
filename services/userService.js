@@ -12,9 +12,13 @@ const getUserById = async (userId) => {
   return await User.findById(userId);
 };
 
+const deleteUserById = async (userId) => {
+  return await User.findByIdAndDelete(userId);
+};
+
 const getAllUsers = async () => {
   return await User.find();
 };
 
-const userService = { createUser, getUserById, getAllUsers };
+const userService = { createUser, getUserById, getAllUsers , deleteUserById};
 export default userService;
